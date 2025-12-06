@@ -50,7 +50,7 @@ Using **Linear Interpolation** (via Pandas), the system fills in missing frames 
 ```
 pip install -r requirements.txt
 ```
-###2. Run Analysis
+### 2. Run Analysis
 You need to specify the input video and the initial (x, y) coordinates of the target player.
 ```
 # Example: Track a player starting at (300, 360)
