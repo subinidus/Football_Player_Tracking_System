@@ -63,10 +63,10 @@ Below is an example of the generated tactical heatmap and trajectory analysis.
 ![Result](./assets/result_sample.png)
 
 
-👨‍💻 Author
+## 👨‍💻 Author
 Seo Su-bin
 
 Dept. of Computer Science (AI Computing), Kyungpook National University
 
-📜 License
+## 📜 License
 This project is licensed under the MIT License.
