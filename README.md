@@ -8,7 +8,7 @@
 
 ## 📌 Project Overview
 축구 중계 영상(Broadcast View)에서 특정 선수를 추적하여 **18-Zone 점유율 및 히트맵**을 분석하는 파이프라인입니다.
-선수 교차(Occlusion)와 작은 객체 크기로 인한 Detection 실패 문제를 **데이터 엔지니어링적 접근(Post-processing)**으로 해결했습니다.
+선수 교차(Occlusion)와 작은 객체 크기로 인한 Detection 실패 문제를 **Post-processing**으로 해결했습니다.
 
 ## 💥 The Challenge
 1.  **Frequent ID Switching**: 선수들이 겹치거나 교차할 때 Tracker ID가 바뀌어 추적 연속성이 깨짐.
@@ -24,14 +24,14 @@
 * `Distance Matching`: 마지막 위치와 후보 ID의 시작 위치 간 유클리드 거리가 임계값(`150px`) 이내인 경우 병합.
 
 ### 2. Upscaling Inference Strategy
-작은 객체 탐지율을 높이기 위해, 추론 단계에서 입력 이미지를 **1.5배 업스케일링(Upscaling)**하여 주입합니다.
+작은 객체 탐지율을 높이기 위해, 추론 단계에서 입력 이미지를 **1.5배 Upscaling**하여 주입합니다.
 * **Result**: 뭉개져서 잡히지 않던 선수의 윤곽선이 뚜렷해지며 Detection Recall 대폭 상승.
 
 ### 3. Data Interpolation
-Pandas의 `Linear Interpolation`을 활용하여 Detection이 튀거나 누락된 프레임(Missing Data)을 부드럽게 보간하여 궤적의 연속성 확보.
+Pandas의 `Linear Interpolation`을 활용하여 Detection이 튀거나 누락된 프레임을 부드럽게 보간하여 궤적의 연속성 확보.
 
 ## ⚖️ Trade-offs
-* **Linear Mapping vs Homography**: 복잡한 호모그래피 변환 대신 **선형 매핑(Linear Mapping)**을 채택했습니다. 정밀한 물리적 거리(cm 단위)보다는 **Zone 14 점유 등 전술적 흐름 파악**에 최적화하여 연산 속도를 확보했습니다.
+* **Linear Mapping vs Homography**: 복잡한 호모그래피 변환 대신 **Linear Mapping**을 채택했습니다. 정밀한 물리적 거리(cm 단위)보다는 **Zone 14 점유 등 전술적 흐름 파악**에 최적화하여 연산 속도를 확보했습니다.
 * **Heuristic Stitching**: 딥러닝 기반의 Feature Matching(Re-ID) 대신 거리 기반 매칭을 사용했기에, 매우 혼잡한 상황에서는 오매칭 가능성이 존재합니다. (하지만 일반적인 경기 흐름에서는 충분한 성능 입증)
 
 ## 🛠️ Tech Stack
