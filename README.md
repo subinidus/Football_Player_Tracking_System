@@ -60,7 +60,7 @@ python football_tracker.py --video ./data/match_clip.mp4 --tx 300 --ty 360 --out
 📊 Results
 Below is an example of the generated tactical heatmap and trajectory analysis.
 
-![Result](./assets/report_sample.png)
+![Result](./assets/result_sample.png)
 
 
 👨‍💻 Author
