@@ -19,7 +19,7 @@
 딥러닝 모델의 성능에만 의존하지 않고, **알고리즘적 후처리**를 통해 성능을 극대화했습니다.
 
 ### 1. Spatio-temporal Track Stitching (트랙 스티칭)
-끊어진 트랙 ID들을 연결하기 위해 **시공간적 거리(Spatio-temporal distance)**를 계산하여 동일 인물일 가능성이 높은 ID를 강제로 병합합니다.
+끊어진 트랙 ID들을 연결하기 위해 **Spatio-temporal distance**를 계산하여 동일 인물일 가능성이 높은 ID를 강제로 병합합니다.
 * `Candidate Search`: 타겟 ID가 사라진 시점(`last_frame`) 이후 `N` 프레임 내에 새로 등장한 ID 탐색.
 * `Distance Matching`: 마지막 위치와 후보 ID의 시작 위치 간 유클리드 거리가 임계값(`150px`) 이내인 경우 병합.
 
