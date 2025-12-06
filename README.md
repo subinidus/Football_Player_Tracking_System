@@ -8,25 +8,30 @@
 
 
 ```mermaid
-graph TD
-    %% 스타일 정의
+flowchart LR
+    %% 스타일 정의 (노드 색상)
     classDef ai fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000;
     classDef logic fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,stroke-dasharray: 5 5,color:#000;
     classDef data fill:#e0f2f1,stroke:#00695c,stroke-width:2px,color:#000;
 
-    %% 노드 정의
+    %% 메인 노드 연결
     Start((Start)) --> Input[/"🎥 Input Video &<br/>Target Coordinates"/]
     
+    Input --> Phase1
+    Phase1 --> RawData[("📂 Raw Track Data<br/>(Fragmented IDs)")]:::data
+    RawData --> Phase2
+    Phase2 --> Phase3
+    Phase3 --> Output[/"📊 Final Report &<br/>Tracking Video"/]:::data
+
+    %% 서브그래프 정의 (내부 로직)
     subgraph Phase1 [Phase 1: Enhanced Inference]
         direction TB
         Upscale["🔍 Upscaling (x1.5)<br/>Small Object Enhancement"]:::ai
         Detect["🤖 YOLOv10 Inference<br/>Object Detection"]:::ai
         Track["ID BoT-SORT Tracker<br/>Target Locking"]:::ai
         
-        Input --> Upscale --> Detect --> Track
+        Upscale --> Detect --> Track
     end
-
-    Track --> RawData[("📂 Raw Track Data<br/>(Fragmented IDs)")]:::data
 
     subgraph Phase2 [Phase 2: Data Engineering Logic]
         direction TB
@@ -34,7 +39,7 @@ graph TD
         Interp["📈 Linear Interpolation<br/>(Fill Missing Frames)"]:::logic
         Smooth["Correction<br/>(Noise Reduction)"]:::logic
         
-        RawData --> Stitch --> Interp --> Smooth
+        Stitch --> Interp --> Smooth
     end
 
     subgraph Phase3 [Phase 3: Tactical Analysis]
@@ -42,13 +47,8 @@ graph TD
         Map["CONST Linear Mapping<br/>(Pixel → Meter)"]
         Zone["grid 18-Zone Calculation<br/>(Tactical Heatmap)"]
         
-        Smooth --> Map --> Zone
+        Map --> Zone
     end
-
-    Zone --> Output[/"📊 Final Report &<br/>Tracking Video"/]:::data
-
-    %% 관계선 설명
-    linkStyle default stroke-width:2px,fill:none,stroke:#333;
 ```
 
 
