@@ -50,7 +50,7 @@ Using **Linear Interpolation** (via Pandas), the system fills in missing frames 
 ```
 pip install -r requirements.txt
 ```
-2. Run Analysis
+###2. Run Analysis
 You need to specify the input video and the initial (x, y) coordinates of the target player.
 ```
 # Example: Track a player starting at (300, 360)
@@ -59,6 +59,8 @@ python football_tracker.py --video ./data/match_clip.mp4 --tx 300 --ty 360 --out
 
 📊 Results
 Below is an example of the generated tactical heatmap and trajectory analysis.
+
+![Result](./assets/report_sample.png)
 
 
 👨‍💻 Author
