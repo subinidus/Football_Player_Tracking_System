@@ -4,6 +4,8 @@ import cv2
 import numpy as np
 import pandas as pd
 from ultralytics import YOLO
+import matplotlib
+matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
@@ -32,7 +34,7 @@ class ViewTransformer:
         if point is None: return None
         
         # [Strategy] Robustness over Precision
-        # Uses Linear Mapping for consistent calculation instead of complex Homography
+        # Uses Linear Mapping for consistent calculation
         real_x = (point[0] / frame_shape[1]) * FIELD_LENGTH
         real_y = (point[1] / frame_shape[0]) * FIELD_WIDTH
         return (real_x, real_y)
@@ -40,7 +42,6 @@ class ViewTransformer:
 def get_zone(field_pos):
     """
     Converts coordinates into tactical 18-Zone (6x3 Grid).
-    [Significance] Abstracts minor coordinate errors into zones to ensure data reliability.
     """
     if field_pos is None: return None
     x, y = field_pos
@@ -101,8 +102,7 @@ def stitch_tracks(df, target_id, max_frame_gap=60, max_dist_gap=150):
 
 def render_video(video_path, target_df, output_path, scale=1.5):
     """
-    Generates the final output video based on the processed data (target_df).
-    [Target Only] Draws bounding boxes ONLY for the target player.
+    Generates the final output video based on the processed data.
     """
     cap = cv2.VideoCapture(video_path)
     orig_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -121,13 +121,12 @@ def render_video(video_path, target_df, output_path, scale=1.5):
         ret, frame = cap.read()
         if not ret: break
         
-        # Upscaling (Drawing on the upscaled frame for consistency)
+        # Upscaling
         frame_resized = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
         
         # Check if target data exists for the current frame
         if frame_idx in target_df.index:
             row = target_df.loc[frame_idx]
-            # Retrieve coordinates (Already interpolated)
             x1, y1, x2, y2 = int(row['x1']), int(row['y1']), int(row['x2']), int(row['y2'])
             zone_id = int(row['zone_id'])
             
@@ -142,6 +141,23 @@ def render_video(video_path, target_df, output_path, scale=1.5):
     cap.release()
     out.release()
     print("  - Video Generation Complete.")
+
+def plot_heatmap(df, save_path):
+    plt.style.use('dark_background')
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.set_facecolor('darkgreen')
+    ax.set_xlim(0, FIELD_LENGTH); ax.set_ylim(FIELD_WIDTH, 0)
+    
+    ax.plot([0, FIELD_LENGTH, FIELD_LENGTH, 0, 0], [0, 0, FIELD_WIDTH, FIELD_WIDTH, 0], color='white')
+    ax.plot([FIELD_LENGTH/2, FIELD_LENGTH/2], [0, FIELD_WIDTH], color='white') # Center line
+    
+    sns.kdeplot(x=df['real_x'], y=df['real_y'], cmap="Reds", fill=True, alpha=0.5, ax=ax, warn_singular=False)
+    ax.plot(df['real_x'], df['real_y'], color='yellow', linewidth=1, alpha=0.8, label='Movement')
+    
+    plt.title(f"Tactical Heatmap (Zone Analysis Included)")
+    plt.legend()
+    plt.savefig(save_path)
+    print(f"  - Report Saved: {save_path}")
 
 def run_analysis(video_path, target_init_pos, output_path, model_path='yolov10m.pt'):
     # --- 1. Initialize ---
@@ -162,19 +178,28 @@ def run_analysis(video_path, target_init_pos, output_path, model_path='yolov10m.
     print(f"▶ Start Analysis: {video_path}")
     print(f"  - Upscaling: {orig_w}x{orig_h} -> {new_w}x{new_h} (x{SCALE})")
     
+    # Download model if not exists (Optional check)
+    if not os.path.exists(model_path):
+        print(f"Downloading {model_path}...")
+        try:
+            import torch
+            torch.hub.download_url_to_file(f'https://github.com/THU-MIG/yolov10/releases/download/v1.1/{model_path}', model_path)
+        except:
+            print("Warning: Auto-download failed. Please ensure yolov10m.pt exists.")
+
     model = YOLO(model_path)
     raw_data = []
     initial_target_id = None
     frame_id = 0
 
     # --- 2. Inference Loop (Data Collection) ---
-    # Collects detection data for ALL objects first. (Visualization is done in Step 5)
     while True:
         ret, frame = cap.read()
         if not ret: break
 
         frame_resized = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
         
+        # BoT-SORT Tracking
         results = model.track(frame_resized, persist=True, tracker="botsort.yaml",
                               conf=0.1, iou=0.5, verbose=False, classes=[0])
 
@@ -182,7 +207,7 @@ def run_analysis(video_path, target_init_pos, output_path, model_path='yolov10m.
             boxes = results[0].boxes.xyxy.cpu().numpy()
             track_ids = results[0].boxes.id.int().cpu().numpy()
 
-            # Target Locking (Executed only once to find the initial ID)
+            # Target Locking
             if initial_target_id is None:
                 min_dist = float('inf')
                 best_id = None
@@ -197,7 +222,6 @@ def run_analysis(video_path, target_init_pos, output_path, model_path='yolov10m.
                     initial_target_id = best_id
                     print(f"  - Target Locked: ID {initial_target_id}")
 
-            # Logging all detection data (Required for post-processing stitching)
             for box, tid in zip(boxes, track_ids):
                 raw_data.append([frame_id, box[0], box[1], box[2], box[3], int(tid)])
 
@@ -232,7 +256,6 @@ def run_analysis(video_path, target_init_pos, output_path, model_path='yolov10m.
     target_df['center_x'] = (target_df['x1'] + target_df['x2']) / 2
     target_df['center_y'] = (target_df['y1'] + target_df['y2']) / 2
     
-    # Apply ViewTransformer
     real_coords = target_df.apply(
         lambda row: transformer.transform_point((row['center_x'], row['center_y']), (new_h, new_w)), 
         axis=1
@@ -252,35 +275,16 @@ def run_analysis(video_path, target_init_pos, output_path, model_path='yolov10m.
     target_df.to_csv(csv_path)
     print(f"  - Data Saved: {csv_path}")
     
-    # Heatmap Visualization
     plot_path = output_path.replace('.mp4', '_heatmap.png')
     plot_heatmap(target_df, plot_path)
     
-    # Video Generation (Renders only the target player)
     render_video(video_path, target_df, output_path, scale=SCALE)
-
-def plot_heatmap(df, save_path):
-    plt.style.use('dark_background')
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.set_facecolor('darkgreen')
-    ax.set_xlim(0, FIELD_LENGTH); ax.set_ylim(FIELD_WIDTH, 0)
-    
-    ax.plot([0, FIELD_LENGTH, FIELD_LENGTH, 0, 0], [0, 0, FIELD_WIDTH, FIELD_WIDTH, 0], color='white')
-    ax.plot([FIELD_LENGTH/2, FIELD_LENGTH/2], [0, FIELD_WIDTH], color='white') # Center line
-    
-    sns.kdeplot(x=df['real_x'], y=df['real_y'], cmap="Reds", fill=True, alpha=0.5, ax=ax, warn_singular=False)
-    ax.plot(df['real_x'], df['real_y'], color='yellow', linewidth=1, alpha=0.8, label='Movement')
-    
-    plt.title(f"Tactical Heatmap (Zone Analysis Included)")
-    plt.legend()
-    plt.savefig(save_path)
-    print(f"  - Report Saved: {save_path}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Football Player Tracking System")
     parser.add_argument('--video', type=str, required=True, help="Path to input video file")
-    parser.add_argument('--tx', type=int, required=True, help="Target Player Initial X (in original resolution)")
-    parser.add_argument('--ty', type=int, required=True, help="Target Player Initial Y (in original resolution)")
+    parser.add_argument('--tx', type=int, required=True, help="Target Player Initial X")
+    parser.add_argument('--ty', type=int, required=True, help="Target Player Initial Y")
     parser.add_argument('--output', type=str, default="output.mp4", help="Path to save result video")
     
     args = parser.parse_args()
