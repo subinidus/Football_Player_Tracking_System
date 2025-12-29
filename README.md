@@ -51,9 +51,10 @@ Using **Linear Interpolation** (via Pandas), the system fills in missing frames 
 pip install -r requirements.txt
 ```
 ### 2. Run Analysis
-You need to specify the input video and the initial (x, y) coordinates of the target player.
-```
-# Example: Track a player starting at (300, 360)
+To start the tracking system, you must specify the input video path and the initial (x, y) coordinates of the target player.
+
+```bash
+# Example: Track a player starting at x=300, y=360
 python football_tracker.py --video ./data/match_clip.mp4 --tx 300 --ty 360 --output ./results/final_output.mp4
 ```
 
